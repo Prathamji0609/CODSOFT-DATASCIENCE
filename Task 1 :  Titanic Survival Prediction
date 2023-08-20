@@ -1,0 +1,596 @@
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+
+# Input data files are available in the read-only "../input/" directory
+# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All" 
+# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
+/kaggle/input/test-file/tested.csv
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from imblearn.over_sampling import SMOTE
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import f1_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
+import seaborn as sns
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
+%matplotlib inline
+/opt/conda/lib/python3.10/site-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.16.5 and <1.23.0 is required for this version of SciPy (detected version 1.23.5
+
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+titanic_data = pd.read_csv('/kaggle/input/test-file/tested.csv')
+titanic_data.head()
+PassengerId	Survived	Pclass	Name	Sex	Age	SibSp	Parch	Ticket	Fare	Cabin	Embarked
+0	892	0	3	Kelly, Mr. James	male	34.5	0	0	330911	7.8292	NaN	Q
+1	893	1	3	Wilkes, Mrs. James (Ellen Needs)	female	47.0	1	0	363272	7.0000	NaN	S
+2	894	0	2	Myles, Mr. Thomas Francis	male	62.0	0	0	240276	9.6875	NaN	Q
+3	895	0	3	Wirz, Mr. Albert	male	27.0	0	0	315154	8.6625	NaN	S
+4	896	1	3	Hirvonen, Mrs. Alexander (Helga E Lindqvist)	female	22.0	1	1	3101298	12.2875	NaN	S
+titanic_data.shape
+(418, 12)
+titanic_data.info()
+<class 'pandas.core.frame.DataFrame'>
+
+RangeIndex: 418 entries, 0 to 417
+
+Data columns (total 12 columns):
+
+ #   Column       Non-Null Count  Dtype  
+
+---  ------       --------------  -----  
+
+ 0   PassengerId  418 non-null    int64  
+
+ 1   Survived     418 non-null    int64  
+
+ 2   Pclass       418 non-null    int64  
+
+ 3   Name         418 non-null    object 
+
+ 4   Sex          418 non-null    object 
+
+ 5   Age          332 non-null    float64
+
+ 6   SibSp        418 non-null    int64  
+
+ 7   Parch        418 non-null    int64  
+
+ 8   Ticket       418 non-null    object 
+
+ 9   Fare         417 non-null    float64
+
+ 10  Cabin        91 non-null     object 
+
+ 11  Embarked     418 non-null    object 
+
+dtypes: float64(2), int64(5), object(5)
+
+memory usage: 39.3+ KB
+titanic_data.describe()
+PassengerId	Survived	Pclass	Age	SibSp	Parch	Fare
+count	418.000000	418.000000	418.000000	332.000000	418.000000	418.000000	417.000000
+mean	1100.500000	0.363636	2.265550	30.272590	0.447368	0.392344	35.627188
+std	120.810458	0.481622	0.841838	14.181209	0.896760	0.981429	55.907576
+min	892.000000	0.000000	1.000000	0.170000	0.000000	0.000000	0.000000
+25%	996.250000	0.000000	1.000000	21.000000	0.000000	0.000000	7.895800
+50%	1100.500000	0.000000	3.000000	27.000000	0.000000	0.000000	14.454200
+75%	1204.750000	1.000000	3.000000	39.000000	1.000000	0.000000	31.500000
+max	1309.000000	1.000000	3.000000	76.000000	8.000000	9.000000	512.329200
+titanic_data.columns
+Index(['PassengerId', 'Survived', 'Pclass', 'Name', 'Sex', 'Age', 'SibSp',
+       'Parch', 'Ticket', 'Fare', 'Cabin', 'Embarked'],
+      dtype='object')
+titanic_data.isnull()
+PassengerId	Survived	Pclass	Name	Sex	Age	SibSp	Parch	Ticket	Fare	Cabin	Embarked
+0	False	False	False	False	False	False	False	False	False	False	True	False
+1	False	False	False	False	False	False	False	False	False	False	True	False
+2	False	False	False	False	False	False	False	False	False	False	True	False
+3	False	False	False	False	False	False	False	False	False	False	True	False
+4	False	False	False	False	False	False	False	False	False	False	True	False
+...	...	...	...	...	...	...	...	...	...	...	...	...
+413	False	False	False	False	False	True	False	False	False	False	True	False
+414	False	False	False	False	False	False	False	False	False	False	False	False
+415	False	False	False	False	False	False	False	False	False	False	True	False
+416	False	False	False	False	False	True	False	False	False	False	True	False
+417	False	False	False	False	False	True	False	False	False	False	True	False
+418 rows × 12 columns
+
+titanic_data.isnull().sum()
+PassengerId      0
+Survived         0
+Pclass           0
+Name             0
+Sex              0
+Age             86
+SibSp            0
+Parch            0
+Ticket           0
+Fare             1
+Cabin          327
+Embarked         0
+dtype: int64
+survived = titanic_data.pop('Survived')
+titanic_data['Survived'] = survived
+titanic_data.head()
+PassengerId	Pclass	Name	Sex	Age	SibSp	Parch	Ticket	Fare	Cabin	Embarked	Survived
+0	892	3	Kelly, Mr. James	male	34.5	0	0	330911	7.8292	NaN	Q	0
+1	893	3	Wilkes, Mrs. James (Ellen Needs)	female	47.0	1	0	363272	7.0000	NaN	S	1
+2	894	2	Myles, Mr. Thomas Francis	male	62.0	0	0	240276	9.6875	NaN	Q	0
+3	895	3	Wirz, Mr. Albert	male	27.0	0	0	315154	8.6625	NaN	S	0
+4	896	3	Hirvonen, Mrs. Alexander (Helga E Lindqvist)	female	22.0	1	1	3101298	12.2875	NaN	S	1
+titanic_data.tail()
+PassengerId	Pclass	Name	Sex	Age	SibSp	Parch	Ticket	Fare	Cabin	Embarked	Survived
+413	1305	3	Spector, Mr. Woolf	male	NaN	0	0	A.5. 3236	8.0500	NaN	S	0
+414	1306	1	Oliva y Ocana, Dona. Fermina	female	39.0	0	0	PC 17758	108.9000	C105	C	1
+415	1307	3	Saether, Mr. Simon Sivertsen	male	38.5	0	0	SOTON/O.Q. 3101262	7.2500	NaN	S	0
+416	1308	3	Ware, Mr. Frederick	male	NaN	0	0	359309	8.0500	NaN	S	0
+417	1309	3	Peter, Master. Michael J	male	NaN	1	1	2668	22.3583	NaN	C	0
+corr = titanic_data.corr()
+plt.figure(figsize=(6,6))
+sns.heatmap(corr,annot = True, cmap = "coolwarm")
+/tmp/ipykernel_20/2891593406.py:1: FutureWarning: The default value of numeric_only in DataFrame.corr is deprecated. In a future version, it will default to False. Select only valid columns or specify the value of numeric_only to silence this warning.
+
+  corr = titanic_data.corr()
+<Axes: >
+
+titanic_data.isnull().sum()
+PassengerId      0
+Pclass           0
+Name             0
+Sex              0
+Age             86
+SibSp            0
+Parch            0
+Ticket           0
+Fare             1
+Cabin          327
+Embarked         0
+Survived         0
+dtype: int64
+mean_age = titanic_data['Age'].mean()
+titanic_data['Age'].fillna(value = mean_age, inplace = True)
+titanic_data.isnull().sum()
+PassengerId      0
+Pclass           0
+Name             0
+Sex              0
+Age              0
+SibSp            0
+Parch            0
+Ticket           0
+Fare             1
+Cabin          327
+Embarked         0
+Survived         0
+dtype: int64
+titanic_data['Family'] = titanic_data['SibSp'] + titanic_data['Parch']
+titanic_data.drop(['Name','Ticket','Cabin','PassengerId', 'Parch'],axis = 1,inplace = True)
+titanic_data.head()
+Pclass	Sex	Age	SibSp	Fare	Embarked	Survived	Family
+0	3	male	34.5	0	7.8292	Q	0	0
+1	3	female	47.0	1	7.0000	S	1	1
+2	2	male	62.0	0	9.6875	Q	0	0
+3	3	male	27.0	0	8.6625	S	0	0
+4	3	female	22.0	1	12.2875	S	1	2
+titanic_data.head()
+Pclass	Sex	Age	SibSp	Fare	Embarked	Survived	Family
+0	3	male	34.5	0	7.8292	Q	0	0
+1	3	female	47.0	1	7.0000	S	1	1
+2	2	male	62.0	0	9.6875	Q	0	0
+3	3	male	27.0	0	8.6625	S	0	0
+4	3	female	22.0	1	12.2875	S	1	2
+titanic_data.isnull().sum()
+Pclass      0
+Sex         0
+Age         0
+SibSp       0
+Fare        1
+Embarked    0
+Survived    0
+Family      0
+dtype: int64
+titanic_data.dropna(axis = 0,inplace = True,how = 'any')
+titanic_data.isnull().sum()
+Pclass      0
+Sex         0
+Age         0
+SibSp       0
+Fare        0
+Embarked    0
+Survived    0
+Family      0
+dtype: int64
+titanic_data['Sex'].unique()
+array(['male', 'female'], dtype=object)
+titanic_data['Embarked'].unique()
+array(['Q', 'S', 'C'], dtype=object)
+titanic_data = pd.get_dummies(data = titanic_data,drop_first = True)
+titanic_data.head()
+Pclass	Age	SibSp	Fare	Survived	Family	Sex_male	Embarked_Q	Embarked_S
+0	3	34.5	0	7.8292	0	0	1	1	0
+1	3	47.0	1	7.0000	1	1	0	0	1
+2	2	62.0	0	9.6875	0	0	1	1	0
+3	3	27.0	0	8.6625	0	0	1	0	1
+4	3	22.0	1	12.2875	1	2	0	0	1
+survived2 = titanic_data.pop('Survived')
+titanic_data['Survived'] = survived2
+titanic_data.head()
+Pclass	Age	SibSp	Fare	Family	Sex_male	Embarked_Q	Embarked_S	Survived
+0	3	34.5	0	7.8292	0	1	1	0	0
+1	3	47.0	1	7.0000	1	0	0	1	1
+2	2	62.0	0	9.6875	0	1	1	0	0
+3	3	27.0	0	8.6625	0	1	0	1	0
+4	3	22.0	1	12.2875	2	0	0	1	1
+titanic_data.tail()
+Pclass	Age	SibSp	Fare	Family	Sex_male	Embarked_Q	Embarked_S	Survived
+413	3	30.27259	0	8.0500	0	1	0	1	0
+414	1	39.00000	0	108.9000	0	0	0	0	1
+415	3	38.50000	0	7.2500	0	1	0	1	0
+416	3	30.27259	0	8.0500	0	1	0	1	0
+417	3	30.27259	1	22.3583	2	1	0	0	0
+x = titanic_data.drop('Survived', axis=1)
+y = titanic_data['Survived']
+x.head()
+Pclass	Age	SibSp	Fare	Family	Sex_male	Embarked_Q	Embarked_S
+0	3	34.5	0	7.8292	0	1	1	0
+1	3	47.0	1	7.0000	1	0	0	1
+2	2	62.0	0	9.6875	0	1	1	0
+3	3	27.0	0	8.6625	0	1	0	1
+4	3	22.0	1	12.2875	2	0	0	1
+y.head()
+0    0
+1    1
+2    0
+3    0
+4    1
+Name: Survived, dtype: int64
+titanic_data['Survived'].value_counts()
+0    265
+1    152
+Name: Survived, dtype: int64
+y.value_counts()
+0    265
+1    152
+Name: Survived, dtype: int64
+sns.countplot(x = titanic_data['Survived'], data = titanic_data)
+<Axes: xlabel='Survived', ylabel='count'>
+
+x_samp, y_samp = SMOTE().fit_resample(x,y)
+y_samp.value_counts()
+0    265
+1    265
+Name: Survived, dtype: int64
+x_samp.shape
+(530, 8)
+y_samp.shape
+(530,)
+x_train , x_test , y_train , y_test = train_test_split(x_samp,y_samp,test_size=0.2,random_state=42)
+print(f"Shape of x_train: {x_train.shape}, Shape of x_test: {x_test.shape}, Shape of y_train: {y_train.shape}, Shape of y_test: {y_test.shape}")
+Shape of x_train: (424, 8), Shape of x_test: (106, 8), Shape of y_train: (424,), Shape of y_test: (106,)
+y_train.value_counts()
+1    214
+0    210
+Name: Survived, dtype: int64
+y_test.value_counts()
+0    55
+1    51
+Name: Survived, dtype: int64
+x_train.describe()
+Pclass	Age	SibSp	Fare	Family	Sex_male	Embarked_Q	Embarked_S
+count	424.000000	424.000000	424.000000	424.000000	424.000000	424.000000	424.000000	424.000000
+mean	2.271226	29.855940	0.441038	36.038154	0.820755	0.495283	0.106132	0.591981
+std	0.844687	12.438228	0.878595	55.543483	1.427837	0.500568	0.308370	0.492047
+min	1.000000	0.170000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000
+25%	1.000000	22.057406	0.000000	7.895800	0.000000	0.000000	0.000000	0.000000
+50%	3.000000	30.017417	0.000000	14.136605	0.000000	0.000000	0.000000	1.000000
+75%	3.000000	35.000000	1.000000	34.968750	1.000000	1.000000	0.000000	1.000000
+max	3.000000	76.000000	8.000000	512.329200	10.000000	1.000000	1.000000	1.000000
+x_test.describe()
+Pclass	Age	SibSp	Fare	Family	Sex_male	Embarked_Q	Embarked_S
+count	106.000000	106.000000	106.000000	106.000000	106.000000	106.000000	106.000000	106.000000
+mean	2.245283	28.856257	0.311321	28.620545	0.698113	0.518868	0.179245	0.537736
+std	0.837358	11.551420	0.760491	41.931031	1.468201	0.502017	0.385380	0.500943
+min	1.000000	0.498045	0.000000	7.070742	0.000000	0.000000	0.000000	0.000000
+25%	1.250000	21.263203	0.000000	7.825296	0.000000	0.000000	0.000000	0.000000
+50%	2.500000	30.139363	0.000000	13.837500	0.000000	1.000000	0.000000	1.000000
+75%	3.000000	31.750000	0.000000	27.428100	1.000000	1.000000	0.000000	1.000000
+max	3.000000	62.000000	5.000000	262.375000	10.000000	1.000000	1.000000	1.000000
+Scaler = StandardScaler()
+x_train.head()
+Pclass	Age	SibSp	Fare	Family	Sex_male	Embarked_Q	Embarked_S
+137	2	26.000000	0	13.000000	0	1	0	1
+526	1	30.541688	0	27.720800	0	0	0	0
+417	3	21.480764	0	8.806729	0	0	0	1
+517	3	28.913157	0	7.925000	0	0	0	1
+69	1	60.000000	1	263.000000	5	0	0	1
+x_test.head()
+Pclass	Age	SibSp	Fare	Family	Sex_male	Embarked_Q	Embarked_S
+140	3	10.0	5	46.9000	7	0	0	1
+398	3	31.0	0	7.7333	0	1	1	0
+6	3	30.0	0	7.6292	0	0	1	0
+334	1	30.0	0	26.0000	0	1	0	1
+322	1	33.0	0	26.5500	0	1	0	1
+x_train = Scaler.fit_transform(x_train)
+x_test = Scaler.transform(x_test)
+x_train
+array([[-0.32147621, -0.31037342, -0.50257379, ...,  1.00947888,
+        -0.34457729,  0.83020662],
+       [-1.50674504,  0.05519742, -0.50257379, ..., -0.99061012,
+        -0.34457729, -1.20451943],
+       [ 0.86379261, -0.67413703, -0.50257379, ..., -0.99061012,
+        -0.34457729,  0.83020662],
+       ...,
+       [ 0.86379261,  0.03353712, -0.50257379, ...,  1.00947888,
+         2.90210651, -1.20451943],
+       [-0.32147621,  0.0134224 , -0.50257379, ..., -0.99061012,
+        -0.34457729, -1.20451943],
+       [ 0.86379261,  0.03353712, -0.50257379, ...,  1.00947888,
+         2.90210651, -1.20451943]])
+x_test
+array([[ 0.86379261, -1.59824991,  5.19505416,  0.19578675,  4.33281045,
+        -0.99061012, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.09208798, -0.50257379, -0.51020011, -0.57550307,
+         1.00947888,  2.90210651, -1.20451943],
+       [ 0.86379261,  0.0115957 , -0.50257379, -0.51207653, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [-1.50674504,  0.0115957 , -0.50257379, -0.18093953, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-1.50674504,  0.25307255, -0.50257379, -0.17102569, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-1.50674504,  1.54094904, -0.50257379, -0.18093953, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.55185026, -0.50257379, -0.50907353, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.95431167, -0.50257379, -0.51576898, -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [ 0.86379261, -1.04798675, -0.50257379, -0.51487298, -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-0.32147621, -0.22988114,  0.6369518 , -0.18093953,  0.12568458,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.50727102, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.50957486, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [-1.50674504,  2.02390273,  1.77647739, -0.18634709,  0.82687222,
+        -0.99061012, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.17258027, -0.50257379, -0.50944846, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-0.32147621, -0.63234254,  1.77647739, -0.08180104,  0.82687222,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.71671599, -0.50257379, -0.49851384, -0.57550307,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-0.32147621,  2.58734869, -0.50257379, -0.4749753 , -0.57550307,
+         1.00947888,  2.90210651, -1.20451943],
+       [ 0.86379261, -0.31037342, -0.50257379, -0.40129737,  0.82687222,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-0.32147621, -0.87381939, -0.50257379, -0.41526689, -0.57550307,
+        -0.99061012, -0.34457729,  0.83020662],
+       [ 0.86379261,  1.32934948, -0.50257379, -0.52214283, -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [ 0.86379261, -0.31932148, -0.50257379, -0.50843281, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [-1.50674504,  2.01672948, -0.50257379, -0.14955568, -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [ 0.86379261, -1.11529623,  0.6369518 , -0.49607918,  0.82687222,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-1.50674504,  0.03353712, -0.50257379, -0.17102569, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-0.32147621,  0.17258027, -0.50257379, -0.41526689, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.63234254, -0.50257379, -0.49945264, -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-1.50674504,  0.57504167,  0.6369518 ,  0.84934916,  0.82687222,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261, -0.63234254,  0.6369518 , -0.39904422,  0.12568458,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-1.50674504, -1.92021904, -0.50257379,  1.7747926 ,  0.82687222,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261,  0.85676465, -0.50257379, -0.37741401, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-1.50674504, -0.10914272, -0.50257379, -0.1499218 , -0.57550307,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261, -1.59824991,  4.05552857, -0.12461084,  2.93043516,
+         1.00947888,  2.90210651, -1.20451943],
+       [-0.32147621, -1.33722832, -0.50257379, -0.3641295 , -0.57550307,
+        -0.99061012, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.65553395, -0.50257379, -0.5192866 , -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-0.32147621,  1.62144132,  0.6369518 , -0.18093953,  0.12568458,
+         1.00947888, -0.34457729,  0.83020662],
+       [-1.50674504,  0.21282641, -0.50257379,  3.16273153, -0.57550307,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261,  0.17258027, -0.50257379, -0.51297779, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.47135798, -0.50257379, -0.50989909, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [ 0.86379261, -0.71283482,  1.77647739, -0.21428612,  0.82687222,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.71283482, -0.50257379, -0.50907353, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-0.32147621,  0.81651851, -0.50257379, -0.36119134, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-0.32147621, -0.79249852, -0.50257379,  0.01310369, -0.57550307,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-1.50674504,  0.03353712, -0.50257379,  0.06420293, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-1.50674504,  0.03353712, -0.50257379, -0.18559544, -0.57550307,
+         1.00947888, -0.34457729, -1.20451943],
+       [-0.32147621, -0.76918816, -0.50257379, -0.40823765, -0.57550307,
+        -0.99061012, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.92098961, -0.50257379, -0.51646348, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [-1.50674504,  1.46045676,  0.6369518 ,  1.26873564,  0.12568458,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-0.32147621,  1.05799536, -0.50257379, -0.27106544,  0.12568458,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.19055236,  2.22924751,
+        -0.99061012, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.47135798, -0.50257379, -0.50989909, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.51037901, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [-1.50674504,  0.03353712, -0.50257379, -0.1499218 , -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-1.50674504,  0.82770934, -0.50257379,  4.07976261, -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-0.32147621, -2.24218816,  0.6369518 , -0.23501508,  0.82687222,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712,  0.6369518 , -0.38898077,  0.12568458,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261, -1.03480395, -0.50257379, -0.49345111, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-0.32147621, -0.74104447, -0.50257379, -0.25843109,  0.12568458,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-0.32147621, -0.71283482, -0.50257379, -0.27106544,  0.12568458,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-0.32147621,  0.0120895 , -0.50257379, -0.2286021 ,  0.82687222,
+        -0.99061012, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.50989909, -0.57550307,
+         1.00947888,  2.90210651, -1.20451943],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.50449153, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.50989909, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [-0.32147621, -0.47135798, -0.50257379, -0.4062543 , -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.5192866 , -0.57550307,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261, -0.06889658, -0.50257379, -0.50674468, -0.57550307,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-0.32147621, -0.94708064,  0.6369518 , -0.41555532,  0.82687222,
+        -0.99061012, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.47135798, -0.50257379, -0.51350412, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261, -2.32268044,  0.6369518 , -0.34857372,  0.82687222,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-1.50674504,  0.09208798, -0.50257379, -0.13520064, -0.57550307,
+         1.00947888, -0.34457729, -1.20451943],
+       [-1.50674504,  0.0115957 , -0.50257379,  0.17055149, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261, -0.63234254, -0.50257379, -0.51034972, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [-1.50674504, -1.03480395, -0.50257379,  0.19939178, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.17258027, -0.50257379, -0.24357704, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.50449153, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.50989909, -0.57550307,
+         1.00947888,  2.90210651, -1.20451943],
+       [ 0.86379261,  0.03353712,  0.6369518 , -0.22690375,  1.52805987,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-0.32147621,  0.0115957 , -0.50257379, -0.41526689, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-0.32147621,  0.03353712, -0.50257379, -0.45657519, -0.57550307,
+         1.00947888,  2.90210651, -1.20451943],
+       [ 0.86379261,  0.37381097, -0.50257379, -0.50847149, -0.57550307,
+         1.00947888,  2.90210651, -1.20451943],
+       [-1.50674504,  1.2994722 , -0.50257379, -0.18093953, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-1.50674504, -0.71141783, -0.50257379,  0.42828414,  0.12568458,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-1.50674504,  0.03353712, -0.50257379, -0.07849702, -0.57550307,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-1.50674504, -0.31037342,  0.6369518 ,  1.81587559,  0.12568458,
+        -0.99061012, -0.34457729, -1.20451943],
+       [ 0.86379261, -0.79332711, -0.50257379, -0.50802086, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-0.32147621, -2.36308395,  0.6369518 , -0.22215777,  1.52805987,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-1.50674504, -0.42536318, -0.50257379,  0.89492019, -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-1.50674504,  1.21897992, -0.50257379,  0.42110151,  0.12568458,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-0.32147621,  2.50685641, -0.50257379, -0.42698325, -0.57550307,
+         1.00947888,  2.90210651, -1.20451943],
+       [ 0.86379261, -0.22988114,  0.6369518 , -0.50674468,  0.12568458,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-0.32147621, -0.06900818, -0.50257379, -0.2350232 ,  0.82687222,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-1.50674504,  1.62144132,  0.6369518 ,  3.16273153,  0.82687222,
+         1.00947888, -0.34457729, -1.20451943],
+       [-0.32147621, -0.47135798,  0.6369518 , -0.1499218 ,  0.12568458,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-0.32147621, -0.95431167,  0.6369518 , -0.41526689,  0.82687222,
+        -0.99061012, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379,  0.36875278, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-0.32147621, -0.96254343, -0.50257379, -0.40955237,  0.12568458,
+        -0.99061012, -0.34457729,  0.83020662],
+       [-1.50674504,  1.21897992, -0.50257379, -0.11424637, -0.57550307,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.50449153, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [-0.32147621, -0.87381939, -0.50257379, -0.46032984, -0.57550307,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.5192866 , -0.57550307,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.50989909, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [ 0.86379261,  0.0115957 , -0.50257379, -0.51738508, -0.57550307,
+        -0.99061012,  2.90210651, -1.20451943],
+       [ 0.86379261,  0.03353712,  0.6369518 ,  0.60405709,  6.43637339,
+         1.00947888, -0.34457729,  0.83020662],
+       [ 0.86379261,  0.58609487, -0.50257379, -0.51658713, -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943],
+       [-1.50674504,  1.86291816, -0.50257379, -0.13587658, -0.57550307,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261,  0.03353712, -0.50257379, -0.5192866 , -0.57550307,
+         1.00947888, -0.34457729, -1.20451943],
+       [ 0.86379261, -0.52851773, -0.50257379, -0.50856531, -0.57550307,
+        -0.99061012, -0.34457729, -1.20451943]])
+x_train.max()
+8.613630921926969
+x_train.min()
+-2.389489035830253
+x_test.max()
+6.43637338693582
+x_test.min()
+-2.363083946964075
+model = LogisticRegression()
+model.fit(x_train,y_train)
+
+LogisticRegression
+LogisticRegression()
+y_pred = model.predict(x_train)
+LRAcc=accuracy_score(y_train,y_pred)
+print('Logistic regression accuracy: {:.2f}%'.format(LRAcc*100))
+Logistic regression accuracy: 100.00%
+
+LRpcc=precision_score(y_train,y_pred)
+print('Logistic regression accuracy: {:.2f}%'.format(LRpcc*100))
+Logistic regression accuracy: 100.00%
+LRrcc=recall_score(y_train,y_pred)
+print('Logistic regression accuracy: {:.2f}%'.format(LRrcc*100))
+Logistic regression accuracy: 100.00%
+LRf1cc=f1_score(y_train,y_pred)
+print('Logistic regression accuracy: {:.2f}%'.format(LRf1cc*100))
+Logistic regression accuracy: 100.00%
+y_pred1 = model.predict(x_test)
+LRAcc1=accuracy_score(y_test,y_pred1)
+print('Logistic regression accuracy: {:.2f}%'.format(LRAcc1*100))
+Logistic regression accuracy: 100.00%
+LRpcc1=precision_score(y_test,y_pred1)
+print('Logistic regression accuracy: {:.2f}%'.format(LRpcc1*100))
+Logistic regression accuracy: 100.00%
+LRrcc1=recall_score(y_test,y_pred1)
+print('Logistic regression accuracy: {:.2f}%'.format(LRrcc1*100))
+Logistic regression accuracy: 100.00%
+LRf1cc1=f1_score(y_test,y_pred1)
+print('Logistic regression accuracy: {:.2f}%'.format(LRf1cc1*100))
+Logistic regression accuracy: 100.00%
